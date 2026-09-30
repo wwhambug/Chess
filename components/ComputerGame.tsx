@@ -80,8 +80,8 @@ export function ComputerGame({ levelId, playerColor, tcId, customTc, onQuit, onR
   const [flipped, setFlipped] = useState(false);
   const [, setTick] = useState(0);
 
-  const { user } = useAuth();
-  const admin = isAdmin(user);
+  const { user, profile } = useAuth();
+  const admin = isAdmin(user, profile);
 
   const chessRef = useRef<Chess | null>(null);
   const movesRef = useRef<LocalMove[]>([]);
