@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+/* 다크 테마 기본 */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: #161512;
+  color: #e5e5e5;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+}
+
+/* 얇은 커스텀 스크롤바 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3d38;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #57534e;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3d38 transparent;
+}
