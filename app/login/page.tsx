@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '../../lib/supabaseClient';
 import { useAuth, isTempUsername } from '../../components/AuthProvider';
+import { KnightLogo } from '../../components/KnightLogo';
 
 function friendlyAuthError(message: string): string {
   if (/invalid login credentials/i.test(message)) return '이메일 또는 비밀번호가 올바르지 않습니다.';
@@ -119,7 +120,7 @@ export default function LoginPage() {
   if (!configured) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-amber-200">Supabase 미설정</h1>
+        <h1 className="text-xl font-bold text-[#9ccbf5]">Supabase 미설정</h1>
         <p className="mt-3 text-sm leading-6 text-neutral-400">
           <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs">.env.local</code>에 Supabase URL과
           anon key를 설정한 뒤 다시 시도해 주세요. (README.md 참조)
@@ -136,7 +137,7 @@ export default function LoginPage() {
   if (needsUsernameSetup) {
     return (
       <div className="mx-auto max-w-md px-4 py-16">
-        <h1 className="text-center text-xl font-bold text-amber-100">닉네임 설정</h1>
+        <h1 className="text-center text-xl font-bold text-neutral-100">닉네임 설정</h1>
         <p className="mt-2 text-center text-sm text-neutral-400">
           대국에서 사용할 닉네임을 정해 주세요. (2~20자)
         </p>
@@ -146,13 +147,13 @@ export default function LoginPage() {
             onChange={(e) => setNewUsername(e.target.value)}
             placeholder="닉네임"
             maxLength={20}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-amber-600 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="w-full rounded-md bg-[#3692e7] py-2 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
           >
             {busy ? '저장 중…' : '닉네임 저장하고 시작하기'}
           </button>
@@ -163,7 +164,10 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-16">
-      <h1 className="text-center text-2xl font-bold text-amber-100">♞ 체스</h1>
+      <h1 className="flex items-center justify-center gap-2 text-center text-2xl font-bold text-neutral-100">
+        <KnightLogo size={30} />
+        체스
+      </h1>
       <p className="mt-2 text-center text-sm text-neutral-400">실시간 대국을 시작해 보세요.</p>
 
       <div className="mt-6 flex rounded-md border border-neutral-800 bg-[#1b1a17] p-1">
@@ -175,7 +179,7 @@ export default function LoginPage() {
               setError(null);
             }}
             className={`flex-1 rounded px-3 py-1.5 text-sm font-medium ${
-              mode === m ? 'bg-neutral-800 text-amber-200' : 'text-neutral-500 hover:text-neutral-300'
+              mode === m ? 'bg-neutral-800 text-[#9ccbf5]' : 'text-neutral-500 hover:text-neutral-300'
             }`}
           >
             {m === 'login' ? '로그인' : '회원가입'}
@@ -191,7 +195,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="이메일"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           <input
             type="password"
@@ -199,13 +203,13 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-amber-600 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="w-full rounded-md bg-[#3692e7] py-2 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
           >
             {busy ? '로그인 중…' : '로그인'}
           </button>
@@ -218,7 +222,7 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="이메일"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           <input
             type="password"
@@ -227,7 +231,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호 (6자 이상)"
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           <input
             required
@@ -235,13 +239,13 @@ export default function LoginPage() {
             onChange={(e) => setUsername(e.target.value)}
             placeholder="닉네임 (2~20자)"
             maxLength={20}
-            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           {error && <p className="text-sm text-red-400">{error}</p>}
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded-md bg-amber-600 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            className="w-full rounded-md bg-[#3692e7] py-2 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
           >
             {busy ? '가입 중…' : '회원가입'}
           </button>

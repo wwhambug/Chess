@@ -20,13 +20,13 @@ export function Clock({ ms, active, label }: ClockProps) {
   return (
     <div
       className={`flex items-center justify-between gap-3 rounded-md border px-3 py-1.5 transition-colors ${
-        active ? 'border-amber-500/70 bg-neutral-800' : 'border-neutral-800 bg-neutral-900/60'
+        active ? 'border-[#3692e7]/70 bg-neutral-800' : 'border-neutral-800 bg-neutral-900/60'
       }`}
     >
       {label && <span className="truncate text-xs text-neutral-400">{label}</span>}
       <span
         className={`font-mono text-xl font-bold tabular-nums ${
-          low ? 'text-red-400' : active ? 'text-amber-200' : 'text-neutral-300'
+          low ? 'text-red-400' : active ? 'text-[#9ccbf5]' : 'text-neutral-300'
         }`}
       >
         {formatClock(ms)}

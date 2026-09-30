@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
 import { TopBar } from '@/components/TopBar';
-import { TabBar } from '@/components/TabBar';
+import { Chrome } from '@/components/Chrome';
 
 export const metadata: Metadata = {
   title: '체스 — 실시간 대국',
@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <TopBar />
           <main className="pb-28">{children}</main>
-          <TabBar />
+          <Chrome />
         </AuthProvider>
       </body>
     </html>
