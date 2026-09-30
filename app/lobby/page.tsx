@@ -1,7 +1,11 @@
 'use client';
 
 // ============================================================
-// 로비: 컴퓨터와 대결 / 빠른 매칭 / 챌린지 만들기 / 공개 챌린지 / 받은 도전
+// 로비
+// - 컴퓨터와 대결: DB를 쓰지 않는 1인용 모드 (챌린지 아님)
+// - 상대 찾기(빠른 매칭): 공개 시크(seek). 상대를 기다리는 동안만 유지되며,
+//   페이지를 벗어나면 자동 취소됨. 챌린지 목록에 섞이지 않음
+// - 챌린지: 특정 상대에게 보내는 1:1 초대, 또는 공개 챌린지 만들기
 // ============================================================
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,6 +16,7 @@ import { TIME_CONTROLS, DEFAULT_TC_ID, parseTC } from '../../lib/timeControl';
 import { acceptChallenge } from '../../lib/gameLogic';
 import type { Challenge, ColorChoice, Profile } from '../../lib/db';
 import { useAuth } from '../../components/AuthProvider';
+import { IconBot, IconChevronRight, IconSwords, IconX } from '../../components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +49,21 @@ export default function LobbyPage() {
     const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // 페이지를 벗어나면 진행 중인 상대 찾기를 자동 취소
+  // (이미 수락된 건 status='open' 조건 때문에 건드리지 않음)
+  useEffect(() => {
+    return () => {
+      const id = matchmakingRef.current;
+      if (id) {
+        void supabase
+          .from('challenges')
+          .update({ status: 'cancelled' })
+          .eq('id', id)
+          .eq('status', 'open');
+      }
+    };
+  }, []);
 
   const loadProfiles = useCallback(async (ids: string[]) => {
     const uniq = [...new Set(ids)].filter(Boolean);
@@ -84,7 +104,8 @@ export default function LobbyPage() {
     ]);
     const openRows = ((open ?? []) as Challenge[]);
     const incRows = ((inc ?? []) as Challenge[]);
-    const myRows = ((my ?? []) as Challenge[]);
+    // 상대 찾기(seek)는 "내가 보낸 도전"에 섞지 않음
+    const myRows = ((my ?? []) as Challenge[]).filter((c) => c.id !== matchmakingRef.current);
     setOpenChallenges(openRows);
     setIncoming(incRows);
     setMine(myRows);
@@ -113,13 +134,13 @@ export default function LobbyPage() {
           setIncoming((prev) => (prev.some((x) => x.id === c.id) ? prev : [c, ...prev]));
           void loadProfiles([c.creator_id]);
         }
-        if (c.creator_id === me) {
+        if (c.creator_id === me && c.id !== matchmakingRef.current) {
           setMine((prev) => (prev.some((x) => x.id === c.id) ? prev : [c, ...prev]));
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'challenges' }, (payload) => {
         const c = payload.new as Challenge;
-        // 내가 매칭 대기 중인 챌린지가 수락되면 대국으로 이동
+        // 내가 찾고 있던 상대가 잡히면 대국으로 이동
         if (matchmakingRef.current && c.id === matchmakingRef.current) {
           if (c.status === 'accepted' && c.game_id) {
             router.push(`/play/${c.game_id}`);
@@ -147,7 +168,7 @@ export default function LobbyPage() {
             : prev.filter((x) => x.id !== c.id),
         );
         setMine((prev) =>
-          stillOpen && c.creator_id === me
+          stillOpen && c.creator_id === me && c.id !== matchmakingRef.current
             ? prev.some((x) => x.id === c.id)
               ? prev.map((x) => (x.id === c.id ? c : x))
               : [c, ...prev]
@@ -167,8 +188,8 @@ export default function LobbyPage() {
   }, [authLoading, user?.id, configured, loadProfiles, router]);
 
   // ------------------------------------------------------------
-  // 빠른 매칭: 같은 시간제의 가장 오래된 공개 챌린지 수락,
-  // 없으면 공개 챌린지를 만들고 상대가 수락할 때까지 대기
+  // 상대 찾기: 같은 시간제의 가장 오래된 공개 챌린지 수락,
+  // 없으면 공개 시크를 만들고 상대가 잡힐 때까지 대기
   // ------------------------------------------------------------
   const quickMatch = async () => {
     if (!user || busy) return;
@@ -201,12 +222,13 @@ export default function LobbyPage() {
         .select('*')
         .single();
       if (error || !created) {
-        showToast('매칭 생성에 실패했습니다.');
+        showToast('상대 찾기를 시작하지 못했습니다.');
         return;
       }
+      setMine((prev) => prev.filter((x) => x.id !== (created as Challenge).id));
       setMatchmakingId((created as Challenge).id);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : '빠른 매칭에 실패했습니다.');
+      showToast(e instanceof Error ? e.message : '상대 찾기에 실패했습니다.');
     } finally {
       setBusy(false);
     }
@@ -226,15 +248,22 @@ export default function LobbyPage() {
     if (!user || busy) return;
     setBusy(true);
     try {
-      const { error } = await supabase.from('challenges').insert({
-        creator_id: user.id,
-        invitee_id: null,
-        time_control: tcId,
-        color_choice: colorChoice,
-        status: 'open',
-      });
-      if (error) showToast('챌린지 생성에 실패했습니다.');
-      else showToast('챌린지를 만들었습니다. 상대가 참가하면 대국이 시작됩니다.');
+      const { data, error } = await supabase
+        .from('challenges')
+        .insert({
+          creator_id: user.id,
+          invitee_id: null,
+          time_control: tcId,
+          color_choice: colorChoice,
+          status: 'open',
+        })
+        .select('*')
+        .single();
+      if (error || !data) showToast('챌린지 생성에 실패했습니다.');
+      else {
+        setMine((prev) => [data as Challenge, ...prev]);
+        showToast('챌린지를 만들었습니다. 상대가 참가하면 대국이 시작됩니다.');
+      }
     } finally {
       setBusy(false);
     }
@@ -257,6 +286,7 @@ export default function LobbyPage() {
   const cancelChallenge = async (id: string) => {
     await supabase.from('challenges').update({ status: 'cancelled' }).eq('id', id);
     if (matchmakingId === id) setMatchmakingId(null);
+    setMine((prev) => prev.filter((x) => x.id !== id));
   };
 
   const respondInvite = async (c: Challenge, accept: boolean) => {
@@ -283,29 +313,31 @@ export default function LobbyPage() {
     const p = creatorProfiles[id];
     return p ? `${p.username} (${p.rating})` : '…';
   };
+  // 진행 중인 상대 찾기(seek)는 "내가 보낸 도전"에 절대 섞지 않음 (렌더 단계 최종 필터)
+  const displayMine = mine.filter((c) => c.id !== matchmakingId);
 
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-amber-200">Supabase 미설정</h1>
-        <p className="mt-3 text-sm leading-6 text-neutral-400">
-          <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs">.env.local</code>에 Supabase URL과
-          anon key를 설정한 뒤 다시 시도해 주세요. (README.md 참조)
+        <h1 className="text-xl font-bold text-neutral-200">Supabase 미설정</h1>
+        <p className="mt-3 text-sm leading-6 text-[#8c8c8c]">
+          <code className="rounded bg-[#262421] px-1.5 py-0.5 text-xs">.env.local</code>에 Supabase URL과
+          anon key를 설정한 뒤 다시 시도해 주세요.
         </p>
       </div>
     );
   }
 
-  if (authLoading) return <p className="px-4 py-16 text-center text-sm text-neutral-500">불러오는 중…</p>;
+  if (authLoading) return <p className="px-4 py-16 text-center text-sm text-[#8c8c8c]">불러오는 중…</p>;
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-amber-100">♞ 체스</h1>
-        <p className="mt-3 text-sm text-neutral-400">로그인하고 실시간 대국을 시작해 보세요.</p>
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <p className="text-4xl text-neutral-300">♞</p>
+        <p className="mt-3 text-sm text-[#8c8c8c]">로그인하고 실시간 대국을 시작해 보세요.</p>
         <Link
           href="/login"
-          className="mt-6 inline-block rounded-md bg-amber-600 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+          className="mt-6 inline-block rounded-md bg-[#3692e7] px-5 py-2 text-sm font-semibold text-white hover:bg-[#4a9fee]"
         >
           로그인 / 회원가입
         </Link>
@@ -314,42 +346,53 @@ export default function LobbyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-6">
       {toast && (
-        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-neutral-800 px-4 py-2 text-sm text-neutral-200 shadow-lg">
+        <div className="fixed left-1/2 top-16 z-50 -translate-x-1/2 rounded-md bg-[#262421] px-4 py-2 text-sm text-[#cccccc] shadow-lg">
           {toast}
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-amber-100">로비</h1>
+      <h1 className="text-lg font-bold text-[#cccccc]">플레이</h1>
 
-      {/* 컴퓨터와 대결 */}
+      {/* 컴퓨터와 대결 — DB를 쓰지 않는 1인용 */}
       <Link
         href="/computer"
-        className="mt-4 flex items-center gap-3 rounded-lg border border-amber-800/50 bg-gradient-to-r from-amber-950/40 to-[#1b1a17] p-4 transition-colors hover:border-amber-600"
+        className="mt-3 flex items-center gap-3 rounded-lg border border-[#2e2b26] bg-[#262421] p-4 transition-colors hover:border-[#3692e7]/60"
       >
-        <span className="text-3xl">🤖</span>
-        <span>
-          <span className="block text-sm font-bold text-amber-100">컴퓨터와 대결</span>
-          <span className="block text-xs text-neutral-400">
-            Stockfish 17.1 · 레벨 1~8 · MAX 9999
+        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#3692e7]/15 text-[#3692e7]">
+          <IconBot size={24} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-[#cccccc]">컴퓨터와 대결</span>
+          <span className="block text-xs text-[#8c8c8c]">
+            Stockfish 17.1 · 레벨 1~8 · MAX 9999 · 기록에 저장되지 않는 1인용
           </span>
         </span>
-        <span className="ml-auto text-neutral-500">›</span>
+        <IconChevronRight size={18} className="shrink-0 text-[#707070]" />
       </Link>
 
-      {/* 시간제 선택 */}
-      <section className="mt-4 rounded-lg border border-neutral-800 bg-[#1b1a17] p-4">
-        <h2 className="text-sm font-semibold text-neutral-300">시간제</h2>
-        <div className="mt-2 flex flex-wrap gap-2">
+      {/* 상대 찾기 */}
+      <section className="mt-4 rounded-lg border border-[#2e2b26] bg-[#262421] p-4">
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#3692e7]/15 text-[#3692e7]">
+            <IconSwords size={18} />
+          </span>
+          <div>
+            <h2 className="text-sm font-bold text-[#cccccc]">상대 찾기</h2>
+            <p className="text-xs text-[#8c8c8c]">온라인 상대를 자동으로 찾아 대국을 시작합니다</p>
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
           {TIME_CONTROLS.map((tc) => (
             <button
               key={tc.id}
               onClick={() => setTcId(tc.id)}
               className={`rounded-md border px-3 py-1.5 text-sm ${
                 tcId === tc.id
-                  ? 'border-amber-500 bg-amber-600/20 text-amber-200'
-                  : 'border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-neutral-200'
+                  ? 'border-[#3692e7] bg-[#3692e7]/15 text-[#9ccbf5]'
+                  : 'border-[#2e2b26] text-[#8c8c8c] hover:border-[#4a4a44] hover:text-[#bababa]'
               }`}
             >
               {tc.label}
@@ -357,77 +400,93 @@ export default function LobbyPage() {
           ))}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-3">
           {matchmakingId ? (
-            <>
-              <span className="animate-pulse text-sm text-amber-200">상대 찾는 중…</span>
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-[#3692e7]/40 bg-[#3692e7]/10 px-4 py-3">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3692e7] opacity-60" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#3692e7]" />
+              </span>
+              <span className="flex-1 text-sm text-[#9ccbf5]">
+                상대를 찾고 있습니다…
+                <span className="block text-xs font-normal text-[#8c8c8c]">
+                  이 화면을 벗어나면 찾기가 자동 취소됩니다
+                </span>
+              </span>
               <button
                 onClick={cancelMatchmaking}
-                className="rounded-md border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+                className="flex items-center gap-1 rounded-md border border-[#2e2b26] px-3 py-1.5 text-sm text-[#bababa] hover:bg-[#1b1a17]"
               >
-                취소
+                <IconX size={14} /> 취소
               </button>
-            </>
+            </div>
           ) : (
             <button
               onClick={quickMatch}
               disabled={busy}
-              className="rounded-md bg-amber-600 px-5 py-2 text-sm font-bold text-white hover:bg-amber-500 disabled:opacity-50"
+              className="w-full rounded-md bg-[#3692e7] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#4a9fee] disabled:opacity-50"
             >
-              빠른 매칭
+              상대 찾기 시작
             </button>
           )}
+        </div>
+      </section>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-neutral-500">내 색상</label>
-            <select
-              value={colorChoice}
-              onChange={(e) => setColorChoice(e.target.value as ColorChoice)}
-              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm text-neutral-200"
-            >
-              {COLOR_CHOICES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={createChallenge}
-              disabled={busy}
-              className="rounded-md border border-neutral-600 px-4 py-1.5 text-sm text-neutral-200 hover:bg-neutral-800 disabled:opacity-50"
-            >
-              챌린지 만들기
-            </button>
-          </div>
+      {/* 챌린지 만들기 */}
+      <section className="mt-4 rounded-lg border border-[#2e2b26] bg-[#262421] p-4">
+        <h2 className="text-sm font-bold text-[#cccccc]">챌린지 만들기</h2>
+        <p className="mt-0.5 text-xs text-[#8c8c8c]">
+          공개 챌린지를 만들어 두면 다른 사람이 참가할 수 있습니다
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="text-xs text-[#8c8c8c]">내 색상</label>
+          <select
+            value={colorChoice}
+            onChange={(e) => setColorChoice(e.target.value as ColorChoice)}
+            className="rounded-md border border-[#2e2b26] bg-[#1b1a17] px-2 py-1.5 text-sm text-[#cccccc]"
+          >
+            {COLOR_CHOICES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={createChallenge}
+            disabled={busy}
+            className="rounded-md border border-[#2e2b26] px-4 py-1.5 text-sm text-[#bababa] hover:bg-[#1b1a17] disabled:opacity-50"
+          >
+            챌린지 만들기
+          </button>
         </div>
       </section>
 
       {/* 받은 도전 */}
       {incoming.length > 0 && (
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-neutral-300">받은 도전 ({incoming.length})</h2>
+          <h2 className="text-sm font-bold text-[#cccccc]">받은 도전 ({incoming.length})</h2>
           <ul className="mt-2 space-y-2">
             {incoming.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-3 rounded-lg border border-amber-800/50 bg-amber-950/20 px-4 py-2.5"
+                className="flex items-center gap-3 rounded-lg border border-[#3692e7]/40 bg-[#262421] px-4 py-2.5"
               >
-                <span className="text-sm font-medium text-neutral-200">{nameOf(c.creator_id)}</span>
-                <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
+                <span className="text-sm font-medium text-[#cccccc]">{nameOf(c.creator_id)}</span>
+                <span className="rounded bg-[#1b1a17] px-1.5 py-0.5 text-xs text-[#8c8c8c]">
                   {tcLabel(c.time_control)}
                 </span>
                 <span className="ml-auto flex gap-2">
                   <button
                     onClick={() => respondInvite(c, true)}
                     disabled={busy}
-                    className="rounded-md bg-amber-600 px-3 py-1 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                    className="rounded-md bg-[#3692e7] px-3 py-1 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
                   >
                     수락
                   </button>
                   <button
                     onClick={() => respondInvite(c, false)}
                     disabled={busy}
-                    className="rounded-md border border-neutral-700 px-3 py-1 text-sm text-neutral-400 hover:bg-neutral-800 disabled:opacity-50"
+                    className="rounded-md border border-[#2e2b26] px-3 py-1 text-sm text-[#8c8c8c] hover:bg-[#1b1a17] disabled:opacity-50"
                   >
                     거절
                   </button>
@@ -440,26 +499,26 @@ export default function LobbyPage() {
 
       {/* 공개 챌린지 */}
       <section className="mt-6">
-        <h2 className="text-sm font-semibold text-neutral-300">공개 챌린지 ({openChallenges.length})</h2>
+        <h2 className="text-sm font-bold text-[#cccccc]">공개 챌린지 ({openChallenges.length})</h2>
         {openChallenges.length === 0 ? (
-          <p className="mt-2 rounded-lg border border-neutral-800 bg-[#1b1a17] px-4 py-6 text-center text-sm text-neutral-500">
-            현재 열린 공개 챌린지가 없습니다. 빠른 매칭이나 챌린지 만들기로 대국을 시작해 보세요.
+          <p className="mt-2 rounded-lg border border-[#2e2b26] bg-[#262421] px-4 py-6 text-center text-sm text-[#8c8c8c]">
+            현재 열린 공개 챌린지가 없습니다.
           </p>
         ) : (
           <ul className="mt-2 space-y-2">
             {openChallenges.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-[#1b1a17] px-4 py-2.5"
+                className="flex items-center gap-3 rounded-lg border border-[#2e2b26] bg-[#262421] px-4 py-2.5"
               >
-                <span className="text-sm font-medium text-neutral-200">{nameOf(c.creator_id)}</span>
-                <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
+                <span className="text-sm font-medium text-[#cccccc]">{nameOf(c.creator_id)}</span>
+                <span className="rounded bg-[#1b1a17] px-1.5 py-0.5 text-xs text-[#8c8c8c]">
                   {tcLabel(c.time_control)}
                 </span>
                 <button
                   onClick={() => joinChallenge(c)}
                   disabled={busy}
-                  className="ml-auto rounded-md bg-amber-600 px-3 py-1 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                  className="ml-auto rounded-md bg-[#3692e7] px-3 py-1 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
                 >
                   참가
                 </button>
@@ -469,25 +528,25 @@ export default function LobbyPage() {
         )}
       </section>
 
-      {/* 내가 만든 챌린지 */}
-      {mine.length > 0 && (
+      {/* 내가 보낸 도전 */}
+      {displayMine.length > 0 && (
         <section className="mt-6">
-          <h2 className="text-sm font-semibold text-neutral-300">내가 만든 챌린지 ({mine.length})</h2>
+          <h2 className="text-sm font-bold text-[#cccccc]">내가 보낸 도전 ({displayMine.length})</h2>
           <ul className="mt-2 space-y-2">
-            {mine.map((c) => (
+            {displayMine.map((c) => (
               <li
                 key={c.id}
-                className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-[#1b1a17] px-4 py-2.5"
+                className="flex items-center gap-3 rounded-lg border border-[#2e2b26] bg-[#262421] px-4 py-2.5"
               >
-                <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
+                <span className="rounded bg-[#1b1a17] px-1.5 py-0.5 text-xs text-[#8c8c8c]">
                   {tcLabel(c.time_control)}
                 </span>
-                <span className="text-xs text-neutral-500">
+                <span className="text-xs text-[#8c8c8c]">
                   {c.invitee_id ? '1:1 도전' : '공개'} · 대기 중…
                 </span>
                 <button
                   onClick={() => cancelChallenge(c.id)}
-                  className="ml-auto rounded-md border border-neutral-700 px-3 py-1 text-sm text-neutral-400 hover:bg-neutral-800"
+                  className="ml-auto rounded-md border border-[#2e2b26] px-3 py-1 text-sm text-[#8c8c8c] hover:bg-[#1b1a17]"
                 >
                   취소
                 </button>

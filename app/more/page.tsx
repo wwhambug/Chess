@@ -7,6 +7,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthProvider';
+import {
+  IconBot,
+  IconChevronRight,
+  IconHistory,
+  IconSwords,
+  IconUsers,
+} from '../../components/icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,10 +27,10 @@ export default function MorePage() {
   };
 
   const items = [
-    { href: '/friends', icon: '🤝', label: '친구' },
-    { href: '/history', icon: '🕘', label: '대국 기록' },
-    { href: '/computer', icon: '🤖', label: '컴퓨터와 대결' },
-    { href: '/lobby', icon: '♟', label: '로비 (매칭·챌린지)' },
+    { href: '/friends', Icon: IconUsers, label: '친구' },
+    { href: '/history', Icon: IconHistory, label: '대국 기록' },
+    { href: '/computer', Icon: IconBot, label: '컴퓨터와 대결' },
+    { href: '/lobby', Icon: IconSwords, label: '로비 (매칭·챌린지)' },
   ];
 
   return (
@@ -34,7 +41,7 @@ export default function MorePage() {
         <p className="mt-4 text-sm text-neutral-500">불러오는 중…</p>
       ) : user && profile ? (
         <div className="mt-4 rounded-lg border border-neutral-800 bg-[#1b1a17] px-4 py-3">
-          <div className="text-sm font-semibold text-amber-100">{profile.username}</div>
+          <div className="text-sm font-semibold text-neutral-100">{profile.username}</div>
           <div className="mt-0.5 text-xs text-neutral-500">
             레이팅 {profile.rating} · {profile.wins}승 {profile.draws}무 {profile.losses}패
           </div>
@@ -42,12 +49,14 @@ export default function MorePage() {
       ) : null}
 
       <ul className="mt-4 divide-y divide-neutral-800/60 rounded-lg border border-neutral-800 bg-[#1b1a17]">
-        {items.map((it) => (
-          <li key={it.href}>
-            <Link href={it.href} className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-800/40">
-              <span className="text-xl">{it.icon}</span>
-              <span className="text-sm font-medium text-neutral-200">{it.label}</span>
-              <span className="ml-auto text-neutral-600">›</span>
+        {items.map(({ href, Icon, label }) => (
+          <li key={href}>
+            <Link href={href} className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-800/40">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#3692e7]/15 text-[#3692e7]">
+                <Icon size={20} />
+              </span>
+              <span className="text-sm font-medium text-neutral-200">{label}</span>
+              <IconChevronRight size={16} className="ml-auto text-neutral-600" />
             </Link>
           </li>
         ))}
@@ -64,7 +73,7 @@ export default function MorePage() {
         ) : (
           <Link
             href="/login"
-            className="block w-full rounded-lg bg-amber-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-amber-500"
+            className="block w-full rounded-lg bg-[#3692e7] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4a9fee]"
           >
             로그인 / 회원가입
           </Link>
