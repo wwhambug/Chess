@@ -8,16 +8,26 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import Link from 'next/link';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import type { PieceDropHandlerArgs, SquareHandlerArgs } from 'react-chessboard';
 import { TIME_CONTROLS, CUSTOM_TC_ID } from '../lib/timeControl';
-import { applyFreeMove, isPromotionSquare } from '../lib/freeBoard';
+import { applyFreeMove, isPromotionSquare, isLegalChessMove } from '../lib/freeBoard';
+import { evaluateMove } from '../lib/evalClient';
+import { openingName } from '../lib/openings';
+import { movesToPgn, downloadPgn } from '../lib/pgn';
+import { playSound } from '../lib/sound';
+import { getBoardTheme } from '../lib/boardTheme';
 import { Clock } from './Clock';
 import { MoveList } from './MoveList';
 import { GameBottomBar } from './GameBottomBar';
 import { PromotionPicker } from './PromotionPicker';
+import { AccuracyRow } from './AccuracyRow';
+import { MistakeReview } from './MistakeReview';
+import { MoveBadge } from './MoveBadge';
+import { CapturedPieces } from './CapturedPieces';
 
 const STARTPOS = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 export const UNTIMED_ID = 'untimed';
@@ -27,6 +37,12 @@ interface LocalMove {
   san: string;
   uci: string;
   annotation: string | null;
+  /** 수별 센티폰 손실 (정확도 계산용) */
+  lossCp?: number | null;
+  /** 이 수를 두기 전 FEN (실수 복습용) */
+  fenBefore?: string;
+  /** 이 수를 둔 뒤 평가 (백 관점 센티폰, 정확도 계산용) */
+  evalAfterCp?: number;
 }
 
 interface Snapshot {
@@ -57,12 +73,18 @@ export function LocalGame({
 
   const [posFen, setPosFen] = useState(STARTPOS);
   const [moves, setMoves] = useState<LocalMove[]>([]);
+  const [viewPly, setViewPly] = useState<number | null>(null);
+  const displayFen =
+    viewPly == null || viewPly >= moves.length
+      ? posFen
+      : (moves[viewPly]?.fenBefore ?? posFen);
   const [clocks, setClocks] = useState({ w: tc?.baseMs ?? 0, b: tc?.baseMs ?? 0 });
   const [lastAt, setLastAt] = useState<number>(() => Date.now());
   const [result, setResult] = useState<GameResult | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [illegalMode, setIllegalMode] = useState(false);
   const [flipped, setFlipped] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
   const [, setTick] = useState(0);
 
@@ -105,8 +127,7 @@ export function LocalGame({
   const checkGameOver = () => {
     const chess = chessRef.current;
     if (!chess || !validRef.current) return;
-    const mover = posFenRef.current.split(' ')[1] === 'b' ? 'w' : 'b';
-    if (chess.isCheckmate()) {
+    const mover = posFenRef.current.split(' ')[1] === 'b' ? 'w' : 'b';    if (chess.isCheckmate()) {
       endGame({ title: `${mover === 'w' ? '백' : '흑'} 승리!`, detail: '체크메이트' });
     } else if (
       chess.isStalemate() ||
@@ -124,6 +145,7 @@ export function LocalGame({
   const applyLegalMove = (from: string, to: string, promotion?: string): boolean => {
     const chess = chessRef.current;
     if (!chess || resultRef.current) return false;
+    const beforeFen = posFenRef.current;
     pushHistory();
     let mv;
     try {
@@ -141,12 +163,36 @@ export function LocalGame({
       san: mv.san,
       uci: `${from}${to}${mv.promotion ?? ''}`,
       annotation: null,
+      fenBefore: beforeFen,
     };
     movesRef.current = [...movesRef.current, entry];
     setMoves(movesRef.current);
     setFen(newFen);
+    setViewPly(null);
+    playSound(mv.captured ? 'capture' : 'move');
+    if (chess.inCheck()) setTimeout(() => playSound('check'), 130);
+    void fireEval(beforeFen, `${from}${to}${mv.promotion ?? ''}`, newFen, entry.ply);
     checkGameOver();
     return true;
+  };
+
+  // ------------------------------------------------------------
+  // 수 평가 (Stockfish, 실시간) — 정확도/주석용
+  // ------------------------------------------------------------
+  const fireEval = async (beforeFen: string, uci: string, afterFen: string, ply: number) => {
+    try {
+      const res = await evaluateMove(beforeFen, uci, afterFen);
+      if (resultRef.current) return;
+      setMoves((prev) =>
+        prev.map((m) =>
+          m.ply === ply
+            ? { ...m, annotation: res.annotation === '' ? null : res.annotation, lossCp: res.lossCp, evalAfterCp: Math.round(res.evalAfterCp) }
+            : m,
+        ),
+      );
+    } catch {
+      /* 평가는 best-effort */
+    }
   };
 
   const setFen = (f: string) => setPosFen(f);
@@ -185,15 +231,17 @@ export function LocalGame({
       }
     }
     validRef.current = ok;
+    // 불법 수: 기보는 좌표 표기로 깔끔하게, 주석은 무조건 '!!!' (슈퍼브릴리언트)
     const entry: LocalMove = {
       ply: movesRef.current.length + 1,
-      san: `${from}-${to}${promotion ? '=' + promotion.toUpperCase() : ''}${ok ? '' : ' (자유)'}`,
+      san: `${from}-${to}${promotion ? '=' + promotion.toUpperCase() : ''}`,
       uci: `${from}${to}${promotion ?? ''}`,
-      annotation: null,
+      annotation: '!!!',
     };
     movesRef.current = [...movesRef.current, entry];
     setMoves(movesRef.current);
     setPosFen(newFen);
+    playSound('move');
     if (ok) checkGameOver();
     return true;
   };
@@ -205,6 +253,10 @@ export function LocalGame({
       if (isPromotionSquare(posFenRef.current, from, to)) {
         setPromo({ from, to });
         return true;
+      }
+      // 합법 수면 정상 기보(SAN)로, 불법 수면 자유 이동(기보에 !!!)
+      if (isLegalChessMove(posFenRef.current, from, to)) {
+        return applyLegalMove(from, to, undefined);
       }
       return applyIllegalMove(from, to, undefined);
     }
@@ -306,7 +358,8 @@ export function LocalGame({
   const bMs = turnNow === 'b' && !result ? Math.max(0, clocks.b - elapsedNow) : clocks.b;
   const orientation = flipped ? 'black' : 'white';
 
-  const lastUci = moves[moves.length - 1]?.uci;
+  const viewedMove = viewPly != null ? moves[viewPly - 1] : undefined;
+  const lastUci = (viewedMove ?? moves[moves.length - 1])?.uci;
   const squareStyles: Record<string, CSSProperties> = {};
   if (lastUci && lastUci.length >= 4) {
     const hl: CSSProperties = { backgroundColor: 'rgba(155, 199, 0, 0.45)' };
@@ -331,7 +384,32 @@ export function LocalGame({
     }
   }
 
-  const canPlay = !result && !promo && (illegalMode || validRef.current);
+  const canPlay = !result && !promo && viewPly == null && (illegalMode || validRef.current);
+
+  // ←/→ 키로 기보 탐색
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      setViewPly((v) => {
+        const cur = v ?? movesRef.current.length;
+        const next = e.key === 'ArrowLeft' ? cur - 1 : cur + 1;
+        if (next < 0 || next > movesRef.current.length) return v;
+        return next === movesRef.current.length ? null : next;
+      });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+  const opening = openingName(moves.map((m) => m.san));
+  const [boardTheme, setBoardTheme] = useState(getBoardTheme);
+  useEffect(() => {
+    const onFocus = () => setBoardTheme(getBoardTheme());
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 pb-28">
@@ -343,39 +421,51 @@ export function LocalGame({
       )}
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="mx-auto w-full max-w-[640px] flex-1">
-          <div className="mb-2">
-            {untimed ? (
-              <div className="rounded-md bg-neutral-800/60 px-3 py-2 text-sm font-medium text-neutral-200">
-                흑 (위)
-              </div>
-            ) : (
-              <Clock ms={orientation === 'white' ? bMs : wMs} active={!result && turnNow === 'b'} label={orientation === 'white' ? '흑' : '백'} />
-            )}
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex-1">
+              {untimed ? (
+                <div className="rounded-md bg-neutral-800/60 px-3 py-2 text-sm font-medium text-neutral-200">
+                  흑 (위)
+                </div>
+              ) : (
+                <Clock ms={orientation === 'white' ? bMs : wMs} active={!result && turnNow === 'b'} label={orientation === 'white' ? '흑' : '백'} />
+              )}
+            </div>
+            <CapturedPieces fen={posFen} byWhite={orientation !== 'white'} />
           </div>
-          <div className="overflow-hidden rounded-lg shadow-2xl">
+          <div className="relative overflow-hidden rounded-lg shadow-2xl">
             <Chessboard
               options={{
-                position: posFen,
+                position: displayFen,
                 boardOrientation: orientation,
                 allowDragging: canPlay,
                 onPieceDrop,
                 onSquareClick,
                 squareStyles,
-                darkSquareStyle: { backgroundColor: '#b58863' },
-                lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                darkSquareStyle: { backgroundColor: boardTheme.dark },
+                lightSquareStyle: { backgroundColor: boardTheme.light },
                 showNotation: true,
                 animationDurationInMs: 150,
               }}
             />
+            {(() => {
+              const shown = viewPly != null ? moves[viewPly - 1] : moves[moves.length - 1];
+              return shown && shown.annotation ? (
+                <MoveBadge uci={shown.uci} annotation={shown.annotation} orientation={orientation} />
+              ) : null;
+            })()}
           </div>
-          <div className="mt-2">
-            {untimed ? (
-              <div className="rounded-md bg-neutral-800/60 px-3 py-2 text-sm font-medium text-neutral-200">
-                백 (아래)
-              </div>
-            ) : (
-              <Clock ms={orientation === 'white' ? wMs : bMs} active={!result && turnNow === 'w'} label={orientation === 'white' ? '백' : '흑'} />
-            )}
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex-1">
+              {untimed ? (
+                <div className="rounded-md bg-neutral-800/60 px-3 py-2 text-sm font-medium text-neutral-200">
+                  백 (아래)
+                </div>
+              ) : (
+                <Clock ms={orientation === 'white' ? wMs : bMs} active={!result && turnNow === 'w'} label={orientation === 'white' ? '백' : '흑'} />
+              )}
+            </div>
+            <CapturedPieces fen={posFen} byWhite={orientation === 'white'} />
           </div>
 
           {!result && (
@@ -402,10 +492,37 @@ export function LocalGame({
               <div className="border-b border-neutral-800 px-4 py-3 text-center">
                 <p className="text-xl font-bold text-neutral-100">{result.title}</p>
                 <p className="mt-0.5 text-xs text-neutral-500">{result.detail}</p>
+                <AccuracyRow moves={moves} />
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      const sans = moves.map((m) => m.san);
+                      downloadPgn(movesToPgn(sans), `local-game-${Date.now()}.pgn`);
+                    }}
+                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
+                  >
+                    PGN 저장
+                  </button>
+                  <button
+                    onClick={() => setShowReview(true)}
+                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
+                  >
+                    실수 복습
+                  </button>
+                  <Link
+                    href={`/analysis?pgn=${encodeURIComponent(movesToPgn(moves.map((m) => m.san)))}`}
+                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
+                  >
+                    분석판에서 보기
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="border-b border-neutral-800 px-4 py-3 text-center">
                 <p className="text-sm font-semibold text-neutral-300">로컬 대국</p>
+                {opening && (
+                  <p className="mt-0.5 text-xs font-medium text-[#3692e7]">{opening}</p>
+                )}
                 <p className="mt-0.5 text-xs text-neutral-500">
                   {!validRef.current
                     ? '불법 포지션: ... 메뉴에서 무르기로 되돌리세요'
@@ -414,7 +531,11 @@ export function LocalGame({
               </div>
             )}
             <div className="max-h-[380px] flex-1 overflow-y-auto">
-              <MoveList moves={moves as unknown as import('../lib/db').Move[]} />
+              <MoveList
+                moves={moves as unknown as import('../lib/db').Move[]}
+                selectedPly={viewPly}
+                onSelectPly={setViewPly}
+              />
             </div>
           </div>
         </aside>
@@ -428,8 +549,11 @@ export function LocalGame({
             const { from, to } = promo;
             setPromo(null);
             if (!p) return;
-            if (illegalMode) applyIllegalMove(from, to, p);
-            else applyLegalMove(from, to, p);
+            if (illegalMode) {
+              // 합법 프로모션이면 정상 SAN, 불법이면 자유 이동(!!!)
+              if (isLegalChessMove(posFen, from, to, p)) applyLegalMove(from, to, p);
+              else applyIllegalMove(from, to, p);
+            } else applyLegalMove(from, to, p);
           }}
         />
       )}
@@ -449,6 +573,10 @@ export function LocalGame({
         gameOver={!!result}
         onRematch={onRematch}
       />
+
+      {showReview && (
+        <MistakeReview moves={moves} onClose={() => setShowReview(false)} />
+      )}
     </div>
   );
 }

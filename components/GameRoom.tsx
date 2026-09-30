@@ -20,6 +20,8 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { evaluateMove } from '../lib/evalClient';
 import { parseTC } from '../lib/timeControl';
 import { acceptChallenge, applyElo } from '../lib/gameLogic';
+import { MoveBadge } from './MoveBadge';
+import { CapturedPieces } from './CapturedPieces';
 import type { Challenge, Game, GameStatus, Move, Profile } from '../lib/db';
 import { resultReasonLabel } from '../lib/db';
 import { useAuth } from './AuthProvider';
@@ -287,6 +289,19 @@ export function GameRoom({ gameId }: { gameId: string }) {
       router.push(`/play/${myRematch.game_id}`);
     }
   }, [myRematch, router]);
+
+  // ←/→ 키로 기보 탐색
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      goView(e.key === 'ArrowLeft' ? -1 : 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [moves.length]);
 
   // ------------------------------------------------------------
   // 대국 종료 감지 → 레이팅 정산 (가드: 클라이언트당 1회)
@@ -769,10 +784,13 @@ export function GameRoom({ gameId }: { gameId: string }) {
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* 왼쪽: 보드 영역 */}
         <div className="mx-auto w-full max-w-[640px] flex-1">
-          <div className="mb-2">
-            <Clock ms={topMs} active={topActive} label={profileName(topId)} />
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex-1">
+              <Clock ms={topMs} active={topActive} label={profileName(topId)} />
+            </div>
+            <CapturedPieces fen={displayFen} byWhite={myColor !== 'w'} />
           </div>
-          <div className="overflow-hidden rounded-lg shadow-2xl">
+          <div className="relative overflow-hidden rounded-lg shadow-2xl">
             <Chessboard
               options={{
                 position: displayFen,
@@ -789,9 +807,22 @@ export function GameRoom({ gameId }: { gameId: string }) {
                 animationDurationInMs: 150,
               }}
             />
+            {(() => {
+              const last = moves[moves.length - 1];
+              return last && last.annotation && last.uci ? (
+                <MoveBadge
+                  uci={last.uci}
+                  annotation={last.annotation}
+                  orientation={myColor === 'b' ? 'black' : 'white'}
+                />
+              ) : null;
+            })()}
           </div>
-          <div className="mt-2">
-            <Clock ms={bottomMs} active={bottomActive} label={profileName(bottomId)} />
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="flex-1">
+              <Clock ms={bottomMs} active={bottomActive} label={profileName(bottomId)} />
+            </div>
+            <CapturedPieces fen={displayFen} byWhite={myColor === 'w'} />
           </div>
 
           {/* 대국 중 버튼 */}
@@ -925,7 +956,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
               </div>
             )}
             <div className="max-h-[380px] flex-1 overflow-y-auto">
-              <MoveList moves={moves} />
+              <MoveList moves={moves} selectedPly={viewPly} onSelectPly={setViewPly} />
             </div>
             <div className="border-t border-neutral-800 p-2">
               <button
