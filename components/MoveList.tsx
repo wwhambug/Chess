@@ -11,7 +11,7 @@ const ANNOTATION_STYLES: Record<string, string> = {
   '!!': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
   '!': 'bg-green-500/20 text-green-400 border-green-500/40',
   '!?': 'bg-lime-500/20 text-lime-300 border-lime-500/40',
-  '?!': 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+  '?!': 'bg-[#e8a039]/15 text-[#e8c15a] border-[#e8a039]/40',
   '?': 'bg-orange-500/20 text-orange-400 border-orange-500/40',
   '??': 'bg-red-500/20 text-red-400 border-red-500/40',
 };

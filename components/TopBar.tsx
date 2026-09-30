@@ -11,7 +11,7 @@ export function TopBar() {
   const { user, profile, loading } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-800 bg-[#161512]/95 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-[#2e2b26] bg-[#161512]/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-md items-center px-4">
         <Link href="/" className="text-lg font-bold tracking-tight text-neutral-100">
           ♞ 체스
@@ -20,14 +20,14 @@ export function TopBar() {
           {loading ? (
             <span className="text-sm text-neutral-500">…</span>
           ) : user && profile ? (
-            <span className="rounded-full bg-neutral-800 px-3 py-1 text-sm text-neutral-300">
-              <span className="font-semibold text-amber-100">{profile.username}</span>
+            <span className="rounded-full bg-[#262421] px-3 py-1 text-sm text-neutral-300">
+              <span className="font-semibold text-neutral-100">{profile.username}</span>
               <span className="ml-1.5 text-xs text-neutral-500">{profile.rating}</span>
             </span>
           ) : (
             <Link
               href="/login"
-              className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-500"
+              className="rounded-md bg-[#3692e7] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#4a9fee]"
             >
               로그인
             </Link>

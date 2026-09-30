@@ -421,6 +421,9 @@ export function GameRoom({ gameId }: { gameId: string }) {
       if (!error && inserted) {
         const real = inserted as Move;
         setMoves((prev) => prev.map((m) => (m.ply === real.ply ? real : m)));
+      } else if (error) {
+        // 수 저장 실패를 조용히 넘기지 않음 ("무브가 안 만들어져" 진단용)
+        setToast(`수 저장 실패: ${error.message}`);
       }
       await supabase.from('games').update({ fen: afterFen, turn: chess.turn() }).eq('id', gameId);
 
@@ -633,7 +636,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-amber-200">Supabase 미설정</h1>
+        <h1 className="text-xl font-bold text-[#9ccbf5]">Supabase 미설정</h1>
         <p className="mt-3 text-sm leading-6 text-neutral-400">
           아직 Supabase 접속 정보가 설정되지 않았습니다.
           <br />
@@ -656,7 +659,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
         <p className="text-neutral-400">대국을 보려면 로그인이 필요합니다.</p>
         <Link
           href="/login"
-          className="mt-4 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500"
+          className="mt-4 inline-block rounded-md bg-[#3692e7] px-4 py-2 text-sm font-semibold text-white hover:bg-[#4a9fee]"
         >
           로그인하기
         </Link>
@@ -669,7 +672,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-lg font-semibold text-neutral-300">대국을 찾을 수 없습니다.</p>
         <p className="mt-2 text-sm text-neutral-500">삭제되었거나 참가자만 볼 수 있는 대국입니다.</p>
-        <Link href="/lobby" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
+        <Link href="/lobby" className="mt-4 inline-block text-sm text-[#3692e7] hover:text-[#4a9fee]">
           ← 로비로 돌아가기
         </Link>
       </div>
@@ -685,7 +688,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-lg font-semibold text-neutral-300">이 대국의 참가자가 아닙니다.</p>
         <p className="mt-2 text-sm text-neutral-500">대국은 백/흑 참가자만 볼 수 있습니다.</p>
-        <Link href="/lobby" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
+        <Link href="/lobby" className="mt-4 inline-block text-sm text-[#3692e7] hover:text-[#4a9fee]">
           ← 로비로 돌아가기
         </Link>
       </div>
@@ -751,11 +754,11 @@ export function GameRoom({ gameId }: { gameId: string }) {
                 기권
               </button>
               {oppOfferedDraw ? (
-                <div className="flex items-center gap-2 rounded-md border border-amber-700/60 bg-amber-950/40 px-3 py-1.5 text-sm">
-                  <span className="text-amber-200">상대가 무승부를 제안했습니다</span>
+                <div className="flex items-center gap-2 rounded-md border border-[#3692e7]/40 bg-[#3692e7]/10 px-3 py-1.5 text-sm">
+                  <span className="text-[#9ccbf5]">상대가 무승부를 제안했습니다</span>
                   <button
                     onClick={() => respondDraw(true)}
-                    className="rounded bg-amber-600 px-2 py-0.5 text-xs font-semibold text-white hover:bg-amber-500"
+                    className="rounded bg-[#3692e7] px-2 py-0.5 text-xs font-semibold text-white hover:bg-[#4a9fee]"
                   >
                     수락
                   </button>
@@ -839,7 +842,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
                   {rematch ? (
                     <button
                       onClick={acceptRematch}
-                      className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-500"
+                      className="rounded-md bg-[#3692e7] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#4a9fee]"
                     >
                       리매치 수락
                     </button>
@@ -856,7 +859,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
                   ) : (
                     <button
                       onClick={sendRematch}
-                      className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-500"
+                      className="rounded-md bg-[#3692e7] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#4a9fee]"
                     >
                       리매치
                     </button>
