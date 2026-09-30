@@ -52,7 +52,7 @@ export default function HistoryPage() {
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-amber-200">Supabase 미설정</h1>
+        <h1 className="text-xl font-bold text-[#9ccbf5]">Supabase 미설정</h1>
         <p className="mt-3 text-sm leading-6 text-neutral-400">
           <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs">.env.local</code>에 Supabase URL과
           anon key를 설정한 뒤 다시 시도해 주세요. (README.md 참조)
@@ -67,7 +67,7 @@ export default function HistoryPage() {
   const resultOf = (g: Game): { label: string; cls: string } => {
     const me = user.id;
     const iWhite = g.white_id === me;
-    if (g.status === 'ongoing') return { label: '진행 중', cls: 'text-amber-300' };
+    if (g.status === 'ongoing') return { label: '진행 중', cls: 'text-[#e8c15a]' };
     if (g.status === 'draw') return { label: '무', cls: 'text-neutral-300' };
     const iWon = (g.status === 'white_won') === iWhite;
     return iWon ? { label: '승', cls: 'text-green-400' } : { label: '패', cls: 'text-red-400' };
@@ -86,7 +86,7 @@ export default function HistoryPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-xl font-bold text-amber-100">대국 기록</h1>
+      <h1 className="text-xl font-bold text-neutral-100">대국 기록</h1>
       {games.length === 0 ? (
         <p className="mt-4 rounded-lg border border-neutral-800 bg-[#1b1a17] px-4 py-8 text-center text-sm text-neutral-500">
           아직 둔 대국이 없습니다. 로비에서 첫 대국을 시작해 보세요.

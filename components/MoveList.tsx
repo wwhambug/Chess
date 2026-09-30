@@ -1,30 +1,31 @@
 'use client';
 
 // ============================================================
-// 기보 목록: 수 번호별 2열(SAN + 평가 주석 배지)
+// 기보 목록: 수 번호별 2열 (SAN + 평가 주석 기호를 수 바로 옆에 표시)
 // ============================================================
 
 import type { Move } from '../lib/db';
 
-/** 주석 → 배지 색상 (Lichess 스타일) */
-const ANNOTATION_STYLES: Record<string, string> = {
-  '!!': 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
-  '!': 'bg-green-500/20 text-green-400 border-green-500/40',
-  '!?': 'bg-lime-500/20 text-lime-300 border-lime-500/40',
-  '?!': 'bg-[#e8a039]/15 text-[#e8c15a] border-[#e8a039]/40',
-  '?': 'bg-orange-500/20 text-orange-400 border-orange-500/40',
-  '??': 'bg-red-500/20 text-red-400 border-red-500/40',
+/** 주석 기호 → 색상 (리체스 스타일: 수 옆에 !! ? 등을 직접 표기) */
+const ANNOTATION_COLORS: Record<string, string> = {
+  '!!': 'text-cyan-300',
+  '!': 'text-green-400',
+  '!?': 'text-lime-300',
+  '?!': 'text-[#e8c15a]',
+  '?': 'text-orange-400',
+  '??': 'text-red-400',
 };
 
-export function AnnotationBadge({ annotation }: { annotation: string | null }) {
-  if (!annotation) return null;
-  const style = ANNOTATION_STYLES[annotation] ?? 'bg-neutral-500/20 text-neutral-300 border-neutral-500/40';
+export function AnnotatedSan({ san, annotation }: { san: string; annotation: string | null }) {
+  const color = annotation ? (ANNOTATION_COLORS[annotation] ?? 'text-neutral-300') : '';
   return (
-    <span
-      className={`ml-1 inline-block rounded border px-1 text-[10px] font-bold leading-4 ${style}`}
-      title="수 평가"
-    >
-      {annotation}
+    <span className="font-medium text-neutral-200">
+      {san}
+      {annotation ? (
+        <span className={`font-black ${color}`} title="수 평가">
+          {annotation}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -43,9 +44,8 @@ export function MoveList({ moves }: { moves: Move[] }) {
         <li key={idx} className="flex items-center px-2 py-1 hover:bg-neutral-800/40">
           <span className="w-8 shrink-0 text-xs text-neutral-500">{idx + 1}.</span>
           {pair.map((mv) => (
-            <span key={mv.ply} className="w-1/2 truncate pr-1 font-medium text-neutral-200">
-              {mv.san ?? ''}
-              <AnnotationBadge annotation={mv.annotation} />
+            <span key={mv.ply} className="w-1/2 truncate pr-1">
+              <AnnotatedSan san={mv.san ?? ''} annotation={mv.annotation} />
             </span>
           ))}
           {pair.length === 1 && <span className="w-1/2" />}

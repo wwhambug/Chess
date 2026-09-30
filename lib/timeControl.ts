@@ -26,6 +26,23 @@ export const TIME_CONTROLS: TimeControl[] = [
 /** 기본값 (로비/빠른 매칭의 기본 선택) */
 export const DEFAULT_TC_ID = 'blitz-5-0';
 
+/** 커스텀 시간제 id */
+export const CUSTOM_TC_ID = 'custom';
+
+/** 커스텀 시간제 생성 (분 + 초읽기) */
+export function customTC(
+  baseMin: number,
+  incSec: number,
+): { baseMs: number; incMs: number; label: string } {
+  const m = Math.max(0.5, Math.min(180, baseMin));
+  const s = Math.max(0, Math.min(180, incSec));
+  return {
+    baseMs: Math.round(m * 60_000),
+    incMs: Math.round(s * 1000),
+    label: `커스텀 ${m}+${s}`,
+  };
+}
+
 /**
  * 시간 제어 id → { baseMs, incMs, label }
  * 알 수 없는 id가 들어오면 기본값(Blitz 5+0)을 반환한다.
