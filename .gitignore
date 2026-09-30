@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# stockfish engine binaries (fetched at build time by scripts/fetch-stockfish.mjs)
+/public/stockfish/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
