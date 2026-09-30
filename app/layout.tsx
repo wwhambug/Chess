@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/components/AuthProvider';
-import { Navbar } from '@/components/Navbar';
+import { TopBar } from '@/components/TopBar';
+import { TabBar } from '@/components/TabBar';
 
 export const metadata: Metadata = {
   title: '체스 — 실시간 대국',
@@ -13,8 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko" className="dark">
       <body className="min-h-screen bg-[#161512] text-neutral-200 antialiased">
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
+          <TopBar />
+          <main className="pb-28">{children}</main>
+          <TabBar />
         </AuthProvider>
       </body>
     </html>
