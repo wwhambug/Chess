@@ -16,6 +16,7 @@ import { TIME_CONTROLS, DEFAULT_TC_ID, parseTC } from '../../lib/timeControl';
 import { acceptChallenge } from '../../lib/gameLogic';
 import type { Challenge, ColorChoice, Profile } from '../../lib/db';
 import { useAuth } from '../../components/AuthProvider';
+import { KnightLogo } from '../../components/KnightLogo';
 import { IconBot, IconChevronRight, IconSwords, IconX } from '../../components/icons';
 
 export const dynamic = 'force-dynamic';
@@ -333,7 +334,7 @@ export default function LobbyPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="text-4xl text-neutral-300">♞</p>
+        <KnightLogo size={56} />
         <p className="mt-3 text-sm text-[#8c8c8c]">로그인하고 실시간 대국을 시작해 보세요.</p>
         <Link
           href="/login"
@@ -366,7 +367,24 @@ export default function LobbyPage() {
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-bold text-[#cccccc]">컴퓨터와 대결</span>
           <span className="block text-xs text-[#8c8c8c]">
-            Stockfish 17.1 · 레벨 1~8 · MAX 9999 · 기록에 저장되지 않는 1인용
+            Stockfish 17.1 · 레벨 1~15 · 기록에 저장되지 않는 1인용
+          </span>
+        </span>
+        <IconChevronRight size={18} className="shrink-0 text-[#707070]" />
+      </Link>
+
+      {/* 로컬 대국 — 한 기기 2인용 */}
+      <Link
+        href="/local"
+        className="mt-3 flex items-center gap-3 rounded-lg border border-[#2e2b26] bg-[#262421] p-4 transition-colors hover:border-[#3692e7]/60"
+      >
+        <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#3692e7]/15 text-[#3692e7]">
+          <IconSwords size={24} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-[#cccccc]">로컬 대국</span>
+          <span className="block text-xs text-[#8c8c8c]">
+            한 기기에서 둘이서 · 로그인 불필요
           </span>
         </span>
         <IconChevronRight size={18} className="shrink-0 text-[#707070]" />

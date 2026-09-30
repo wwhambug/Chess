@@ -6,6 +6,7 @@
 
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
+import { KnightLogo } from './KnightLogo';
 
 export function TopBar() {
   const { user, profile, loading } = useAuth();
@@ -13,8 +14,9 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-40 border-b border-[#2e2b26] bg-[#161512]/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-md items-center px-4">
-        <Link href="/" className="text-lg font-bold tracking-tight text-neutral-100">
-          ♞ 체스
+        <Link href="/" className="flex items-center gap-1.5 text-lg font-bold tracking-tight text-neutral-100">
+          <KnightLogo size={26} />
+          체스
         </Link>
         <div className="ml-auto">
           {loading ? (

@@ -13,6 +13,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { parseTC } from '../lib/timeControl';
 import type { Game, Profile } from '../lib/db';
 import { useAuth } from '../components/AuthProvider';
+import { KnightLogo } from '../components/KnightLogo';
 import {
   IconBlitz,
   IconBot,
@@ -171,7 +172,7 @@ export default function HomePage() {
       {!user ? (
         <>
           <div className="mt-6 rounded-lg border border-[#2e2b26] bg-[#262421] p-6 text-center">
-            <p className="text-2xl text-neutral-300">♞</p>
+            <KnightLogo size={44} />
             <p className="mt-2 text-sm text-[#8c8c8c]">로그인하고 실시간 대국을 시작해 보세요.</p>
             <Link
               href="/login"

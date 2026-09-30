@@ -27,31 +27,40 @@ export interface AnalysisResult {
 
 export interface EngineLevel {
   id: string;
-  /** "레벨 1" ~ "레벨 8", "MAX" */
+  /** "레벨 1" ~ "레벨 15" */
   label: string;
-  /** UI 표시 숫자: "1".."8", MAX는 "9999" */
+  /** UI 표시 숫자: "1".."15" */
   display: string;
   /** Stockfish Skill Level (0~20). 20 = 제한 없음(풀파워) */
   skill: number;
-  /** 탐색 깊이 */
+  /** 수당 생각 시간 (밀리초). 깊이 탐색 대신 시간제로 두어 체감 속도를 일정하게 유지 */
+  movetimeMs: number;
+  /** 탐색 깊이 상한 (안전장치) */
   depth: number;
 }
 
 /**
- * 컴퓨터 레벨 정의.
- * - 레벨 1~7: Skill Level로 힘을 제한한 단계별 상대
- * - 레벨 8 / MAX: Skill Level 제한 없는 풀파워 Stockfish 17.1 (깊이만 다름)
+ * 컴퓨터 레벨 정의 (리체스식 1~15).
+ * - 낮은 레벨: Skill Level로 실력을 제한 + 짧은 생각 시간
+ * - 레벨 15: Skill 제한 없는 풀파워 Stockfish 17.1
+ * - go movetime 기반이라 모바일에서도 응답 속도가 일정하다.
  */
 export const ENGINE_LEVELS: EngineLevel[] = [
-  { id: '1', label: '레벨 1', display: '1', skill: 0, depth: 6 },
-  { id: '2', label: '레벨 2', display: '2', skill: 3, depth: 8 },
-  { id: '3', label: '레벨 3', display: '3', skill: 6, depth: 10 },
-  { id: '4', label: '레벨 4', display: '4', skill: 9, depth: 12 },
-  { id: '5', label: '레벨 5', display: '5', skill: 12, depth: 14 },
-  { id: '6', label: '레벨 6', display: '6', skill: 14, depth: 16 },
-  { id: '7', label: '레벨 7', display: '7', skill: 16, depth: 18 },
-  { id: '8', label: '레벨 8', display: '8', skill: 20, depth: 20 },
-  { id: 'max', label: 'MAX', display: '9999', skill: 20, depth: 23 },
+  { id: '1', label: '레벨 1', display: '1', skill: 0, movetimeMs: 100, depth: 11 },
+  { id: '2', label: '레벨 2', display: '2', skill: 1, movetimeMs: 150, depth: 12 },
+  { id: '3', label: '레벨 3', display: '3', skill: 3, movetimeMs: 200, depth: 13 },
+  { id: '4', label: '레벨 4', display: '4', skill: 4, movetimeMs: 300, depth: 14 },
+  { id: '5', label: '레벨 5', display: '5', skill: 6, movetimeMs: 400, depth: 15 },
+  { id: '6', label: '레벨 6', display: '6', skill: 7, movetimeMs: 500, depth: 16 },
+  { id: '7', label: '레벨 7', display: '7', skill: 9, movetimeMs: 650, depth: 17 },
+  { id: '8', label: '레벨 8', display: '8', skill: 10, movetimeMs: 800, depth: 18 },
+  { id: '9', label: '레벨 9', display: '9', skill: 11, movetimeMs: 1000, depth: 19 },
+  { id: '10', label: '레벨 10', display: '10', skill: 13, movetimeMs: 1200, depth: 20 },
+  { id: '11', label: '레벨 11', display: '11', skill: 14, movetimeMs: 1400, depth: 21 },
+  { id: '12', label: '레벨 12', display: '12', skill: 16, movetimeMs: 1700, depth: 22 },
+  { id: '13', label: '레벨 13', display: '13', skill: 17, movetimeMs: 2000, depth: 23 },
+  { id: '14', label: '레벨 14', display: '14', skill: 19, movetimeMs: 2400, depth: 24 },
+  { id: '15', label: '레벨 15', display: '15', skill: 20, movetimeMs: 3000, depth: 25 },
 ];
 
 export function getEngineLevel(id: string): EngineLevel {
@@ -298,18 +307,37 @@ class StockfishEngine {
 }
 
 let singleton: StockfishEngine | null = null;
+/** 대국 착수 전용 엔진 (평가 큐와 분리 — 수 평가가 착수를 막지 않게) */
+let gameSingleton: StockfishEngine | null = null;
 
 function getEngine(): StockfishEngine {
   if (!singleton) singleton = new StockfishEngine();
   return singleton;
 }
 
+function getGameEngine(): StockfishEngine {
+  if (!gameSingleton) gameSingleton = new StockfishEngine();
+  return gameSingleton;
+}
+
 /**
- * FEN局面을 Stockfish로 분석한다.
+ * FEN局面을 Stockfish로 분석한다. (수 평가·평가 막대용)
  * 실패하면 예외를 던진다 — 호출자가 구형 엔진으로 폴백해야 한다.
  */
 export function analyzePosition(fen: string, opts: AnalyzeOptions = {}): Promise<AnalysisResult> {
   return getEngine().analyze(fen, opts);
+}
+
+/**
+ * 컴퓨터의 다음 수를 구한다. (대국 착수 전용)
+ * 수 평가와 별도 Worker를 쓰므로, 평가 분석이 진행 중이어도
+ * movetimeMs 안에 바로 응수한다.
+ */
+export function analyzeGamePosition(
+  fen: string,
+  opts: AnalyzeOptions = {},
+): Promise<AnalysisResult> {
+  return getGameEngine().analyze(fen, opts);
 }
 
 /** Stockfish를 (이번 세션에서) 사용할 수 없게 되었는지 여부 */

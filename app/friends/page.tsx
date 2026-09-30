@@ -141,7 +141,7 @@ export default function FriendsPage() {
   if (!configured) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-xl font-bold text-amber-200">Supabase 미설정</h1>
+        <h1 className="text-xl font-bold text-[#9ccbf5]">Supabase 미설정</h1>
         <p className="mt-3 text-sm leading-6 text-neutral-400">
           <code className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs">.env.local</code>에 Supabase URL과
           anon key를 설정한 뒤 다시 시도해 주세요. (README.md 참조)
@@ -161,7 +161,7 @@ export default function FriendsPage() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-amber-100">친구</h1>
+      <h1 className="text-xl font-bold text-neutral-100">친구</h1>
 
       {/* 닉네임 검색 */}
       <section className="mt-4 rounded-lg border border-neutral-800 bg-[#1b1a17] p-4">
@@ -171,11 +171,11 @@ export default function FriendsPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="닉네임으로 검색"
-            className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none"
+            className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-[#3692e7] focus:outline-none"
           />
           <button
             type="submit"
-            className="rounded-md bg-amber-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-amber-500"
+            className="rounded-md bg-[#3692e7] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#4a9fee]"
           >
             검색
           </button>
@@ -211,13 +211,13 @@ export default function FriendsPage() {
             {incoming.map((f) => (
               <li
                 key={f.id}
-                className="flex items-center gap-3 rounded-lg border border-amber-800/50 bg-amber-950/20 px-4 py-2.5"
+                className="flex items-center gap-3 rounded-lg border border-[#3692e7]/40 bg-[#3692e7]/10 px-4 py-2.5"
               >
                 <span className="text-sm font-medium text-neutral-200">{nameOf(f.requester_id)}</span>
                 <span className="ml-auto flex gap-2">
                   <button
                     onClick={() => respond(f, true)}
-                    className="rounded-md bg-amber-600 px-3 py-1 text-sm font-semibold text-white hover:bg-amber-500"
+                    className="rounded-md bg-[#3692e7] px-3 py-1 text-sm font-semibold text-white hover:bg-[#4a9fee]"
                   >
                     수락
                   </button>
@@ -254,7 +254,7 @@ export default function FriendsPage() {
                   <button
                     onClick={() => challengeFriend(fid)}
                     disabled={busy}
-                    className="ml-auto rounded-md bg-amber-600 px-3 py-1 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                    className="ml-auto rounded-md bg-[#3692e7] px-3 py-1 text-sm font-semibold text-white hover:bg-[#4a9fee] disabled:opacity-50"
                   >
                     대결 신청
                   </button>
