@@ -2,8 +2,9 @@
  * lib/engine.ts — Client-side chess engine: static evaluation, alpha-beta
  * search, and move grading (annotations like !, ?, ??, !!).
  *
- * Pure logic only: ZERO browser/DOM APIs. This module must run inside a
- * Web Worker (see engine.worker.ts) and under Node.
+ * Pure logic only: ZERO browser/DOM APIs. This module runs under Node and
+ * in the browser main thread. It is the fallback grader used by
+ * lib/evalClient.ts when Stockfish (lib/stockfish.ts) is unavailable.
  */
 
 import { Chess } from 'chess.js';
