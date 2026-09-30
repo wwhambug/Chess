@@ -669,7 +669,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-lg font-semibold text-neutral-300">대국을 찾을 수 없습니다.</p>
         <p className="mt-2 text-sm text-neutral-500">삭제되었거나 참가자만 볼 수 있는 대국입니다.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
+        <Link href="/lobby" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
           ← 로비로 돌아가기
         </Link>
       </div>
@@ -685,7 +685,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-lg font-semibold text-neutral-300">이 대국의 참가자가 아닙니다.</p>
         <p className="mt-2 text-sm text-neutral-500">대국은 백/흑 참가자만 볼 수 있습니다.</p>
-        <Link href="/" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
+        <Link href="/lobby" className="mt-4 inline-block text-sm text-amber-400 hover:text-amber-300">
           ← 로비로 돌아가기
         </Link>
       </div>
@@ -861,7 +861,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
                       리매치
                     </button>
                   )}
-                  <Link href="/" className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
+                  <Link href="/lobby" className="rounded-md border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
                     새 대결
                   </Link>
                 </div>
