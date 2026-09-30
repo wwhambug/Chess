@@ -151,6 +151,32 @@ export function IconChevronRight(props: IconProps) {
   );
 }
 
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m15 5-7 7 7 7" />
+    </Base>
+  );
+}
+
+export function IconChevronsLeft(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m11 5-7 7 7 7" />
+      <path d="m18 5-7 7 7 7" />
+    </Base>
+  );
+}
+
+export function IconChevronsRight(props: IconProps) {
+  return (
+    <Base {...props}>
+      <path d="m6 5 7 7-7 7" />
+      <path d="m13 5 7 7-7 7" />
+    </Base>
+  );
+}
+
 export function IconPlay(props: IconProps) {
   return (
     <Base {...props}>

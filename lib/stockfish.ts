@@ -1,15 +1,17 @@
 /**
  * lib/stockfish.ts — Stockfish 17.1 (WASM) 클라이언트 엔진 매니저.
  *
- * - Stockfish 17.1 Lite (NNUE 내장, 싱글스레드) 바이너리를 unpkg CDN에서
- *   Web Worker로 로드한다. (싱글스레드라 COOP/COEP 헤더가 필요 없다)
+ * - Stockfish 17.1 Lite (NNUE 내장, 싱글스레드) 바이너리를 public/stockfish/에
+ *   셀프호스팅해서 같은 오리진의 Web Worker로 로드한다.
+ *   (크로스오리진 Worker 스크립트는 브라우저 보안 정책상 차단되므로
+ *   unpkg 같은 CDN URL을 Worker에 직접 넘기면 로딩이 실패한다)
+ * - 싱글스레드라 COOP/COEP 헤더가 필요 없다.
  * - UCI 프로토콜로 통신하며, 한 번에 하나의 탐색만 수행하도록 직렬화한다.
  * - SSR 안전: Worker 생성은 브라우저에서만, 실패 시 예외를 던져서
  *   호출자가 구형 자체 엔진(lib/engine.ts)으로 폴백할 수 있게 한다.
  */
 
-const STOCKFISH_JS_URL =
-  'https://unpkg.com/stockfish@17.1.0/src/stockfish-17.1-lite-single-03e3232.js';
+const STOCKFISH_JS_URL = '/stockfish/stockfish-17.1-lite-single-03e3232.js';
 
 /** 메이트 표시용 센티폰 센티넬 (lib/engine.ts의 MATE_SCORE와 동일) */
 export const STOCKFISH_MATE_CP = 100000;

@@ -10,8 +10,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Chess } from 'chess.js';
+import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import type { PieceDropHandlerArgs } from 'react-chessboard';
+import type { PieceDropHandlerArgs, SquareHandlerArgs } from 'react-chessboard';
 import { evaluateMove } from '../lib/evalClient';
 import { analyzePosition, getEngineLevel } from '../lib/stockfish';
 import { TIME_CONTROLS } from '../lib/timeControl';
@@ -154,13 +155,37 @@ export function ComputerGame({ levelId, playerColor, tcId, onQuit, onRematch }: 
   applyMoveRef.current = applyMove;
 
   // ------------------------------------------------------------
-  // 플레이어 수 두기
+  // 플레이어 수 두기 (드래그)
   // ------------------------------------------------------------
   const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
     const chess = chessRef.current;
     if (!chess || resultRef.current || !targetSquare) return false;
     if (chess.turn() !== playerColor) return false;
+    setSelected(null);
     return applyMoveRef.current(sourceSquare, targetSquare, undefined);
+  };
+
+  // ------------------------------------------------------------
+  // 플레이어 수 두기 (클릭-클릭)
+  // ------------------------------------------------------------
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const onSquareClick = ({ square, piece }: SquareHandlerArgs): void => {
+    const chess = chessRef.current;
+    if (!chess || resultRef.current) return;
+    if (chess.turn() !== playerColor) return;
+    if (selected) {
+      setSelected(null);
+      if (square !== selected) {
+        // 선택된 기물 → 클릭한 칸으로 이동 시도 (불법이면 무시)
+        applyMoveRef.current(selected, square, undefined);
+      }
+      return;
+    }
+    // 내 기물을 클릭하면 선택
+    if (piece && (piece.pieceType[0]?.toLowerCase() ?? '') === playerColor) {
+      setSelected(square);
+    }
   };
 
   // ------------------------------------------------------------
@@ -267,6 +292,15 @@ export function ComputerGame({ levelId, playerColor, tcId, onQuit, onRematch }: 
     squareStyles[lastUci.slice(0, 2)] = hl;
     squareStyles[lastUci.slice(2, 4)] = hl;
   }
+  // 클릭 선택 하이라이트 + 이동 가능 칸 점 표시
+  if (selected && chess) {
+    squareStyles[selected] = { backgroundColor: 'rgba(20, 120, 220, 0.45)' };
+    for (const m of chess.moves({ square: selected as Square, verbose: true }) as { to: string }[]) {
+      squareStyles[m.to] = {
+        backgroundImage: 'radial-gradient(circle, rgba(20,120,220,0.55) 22%, transparent 24%)',
+      };
+    }
+  }
   const engineLabel = `Stockfish Lv.${level.display}${thinking ? ' · 생각 중…' : ''}`;
 
   return (
@@ -291,6 +325,7 @@ export function ComputerGame({ levelId, playerColor, tcId, onQuit, onRematch }: 
                 canDragPiece: ({ piece }) =>
                   canPlay && (piece.pieceType[0]?.toLowerCase() ?? '') === playerColor,
                 onPieceDrop,
+                onSquareClick,
                 squareStyles,
                 darkSquareStyle: { backgroundColor: '#b58863' },
                 lightSquareStyle: { backgroundColor: '#f0d9b5' },
@@ -347,7 +382,7 @@ export function ComputerGame({ levelId, playerColor, tcId, onQuit, onRematch }: 
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
                   <button
                     onClick={onRematch}
-                    className="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-500"
+                    className="rounded-md bg-[#3692e7] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#4a9fee]"
                   >
                     다시 두기
                   </button>

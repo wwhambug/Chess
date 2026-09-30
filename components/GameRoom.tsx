@@ -13,8 +13,9 @@ import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Chess } from 'chess.js';
+import type { Square } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
-import type { PieceDropHandlerArgs } from 'react-chessboard';
+import type { PieceDropHandlerArgs, SquareHandlerArgs } from 'react-chessboard';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { evaluateMove } from '../lib/evalClient';
 import { parseTC } from '../lib/timeControl';
@@ -25,6 +26,12 @@ import { useAuth } from './AuthProvider';
 import { EvalBar } from './EvalBar';
 import { Clock } from './Clock';
 import { MoveList } from './MoveList';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
+} from './icons';
 
 const STARTPOS = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -353,10 +360,10 @@ export function GameRoom({ gameId }: { gameId: string }) {
   // ------------------------------------------------------------
   // 수 두기
   // ------------------------------------------------------------
-  const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
+  const doMove = (sourceSquare: string, targetSquare: string): boolean => {
     const s = stateRef.current;
     const g = s.game;
-    if (!g || g.status !== 'ongoing' || !targetSquare || !user) return false;
+    if (!g || g.status !== 'ongoing' || !user) return false;
     if (s.myColor == null || s.myColor !== g.turn) return false;
     const chess = chessRef.current;
     if (!chess) return false;
@@ -455,6 +462,36 @@ export function GameRoom({ gameId }: { gameId: string }) {
     })();
 
     return true;
+  };
+
+  // ------------------------------------------------------------
+  // 수 두기: 드래그 / 클릭-클릭
+  // ------------------------------------------------------------
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const onPieceDrop = ({ sourceSquare, targetSquare }: PieceDropHandlerArgs): boolean => {
+    if (!targetSquare) return false;
+    setSelected(null);
+    return doMove(sourceSquare, targetSquare);
+  };
+
+  const onSquareClick = ({ square, piece }: SquareHandlerArgs): void => {
+    const s = stateRef.current;
+    const g = s.game;
+    if (!g || g.status !== 'ongoing' || !user || !liveMode) return;
+    if (s.myColor == null || s.myColor !== g.turn) return;
+    const chess = chessRef.current;
+    if (!chess) return;
+    if (selected) {
+      setSelected(null);
+      if (square !== selected) {
+        doMove(selected, square);
+      }
+      return;
+    }
+    if (piece && (piece.pieceType[0]?.toLowerCase() ?? '') === s.myColor) {
+      setSelected(square);
+    }
   };
 
   // ------------------------------------------------------------
@@ -613,8 +650,20 @@ export function GameRoom({ gameId }: { gameId: string }) {
       styles[u.slice(0, 2)] = hl;
       styles[u.slice(2, 4)] = hl;
     }
+    // 클릭 선택 하이라이트 + 이동 가능 칸 점 표시
+    if (selected && liveMode) {
+      const chess = chessRef.current;
+      styles[selected] = { backgroundColor: 'rgba(20, 120, 220, 0.45)' };
+      if (chess) {
+        for (const m of chess.moves({ square: selected as Square, verbose: true }) as { to: string }[]) {
+          styles[m.to] = {
+            backgroundImage: 'radial-gradient(circle, rgba(20,120,220,0.55) 22%, transparent 24%)',
+          };
+        }
+      }
+    }
     return styles;
-  }, [viewedLastMove]);
+  }, [viewedLastMove, selected, liveMode]);
 
   const resultInfo = (): { title: string; detail: string } | null => {
     if (!game || game.status === 'ongoing' || myColor == null) return null;
@@ -732,6 +781,7 @@ export function GameRoom({ gameId }: { gameId: string }) {
                 canDragPiece: ({ piece }) =>
                   canPlay && (piece.pieceType[0]?.toLowerCase() ?? '') === myColor,
                 onPieceDrop,
+                onSquareClick,
                 squareStyles,
                 darkSquareStyle: { backgroundColor: '#b58863' },
                 lightSquareStyle: { backgroundColor: '#f0d9b5' },
@@ -794,29 +844,33 @@ export function GameRoom({ gameId }: { gameId: string }) {
                 onClick={() => setViewPly(0)}
                 className="rounded-md border border-neutral-700 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800"
                 title="처음으로"
+                aria-label="처음으로"
               >
-                ⏮
+                <IconChevronsLeft size={16} />
               </button>
               <button
                 onClick={() => goView(-1)}
                 className="rounded-md border border-neutral-700 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800"
                 title="이전 수"
+                aria-label="이전 수"
               >
-                ◀
+                <IconChevronLeft size={16} />
               </button>
               <button
                 onClick={() => goView(1)}
                 className="rounded-md border border-neutral-700 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800"
                 title="다음 수"
+                aria-label="다음 수"
               >
-                ▶
+                <IconChevronRight size={16} />
               </button>
               <button
                 onClick={() => setViewPly(null)}
                 className="rounded-md border border-neutral-700 px-2.5 py-1 text-sm text-neutral-300 hover:bg-neutral-800"
-                title="최종局面으로"
+                title="최종 수순으로"
+                aria-label="최종 수순으로"
               >
-                ⏭
+                <IconChevronsRight size={16} />
               </button>
               <span className="ml-1 text-xs text-neutral-500">
                 {liveMode ? `최종 (${moves.length}수)` : `${viewPly} / ${moves.length}수`}
